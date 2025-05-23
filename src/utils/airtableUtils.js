@@ -25,6 +25,50 @@ const columnMapping = {
   Booth: "booth",
 };
 
+// Helper function to get start and end of today
+const getTodayRange = () => {
+  const today = new Date();
+  const startOfDay = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+  const endOfDay = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + 1
+  );
+
+  return {
+    start: startOfDay.toISOString(),
+    end: endOfDay.toISOString(),
+  };
+};
+
+// New function to check if user was already scanned today
+export const checkIfUserScannedToday = async (username, scannedUserId) => {
+  try {
+    const { start, end } = getTodayRange();
+
+    const records = await base(SCANNED_DATA_TABLE_NAME)
+      .select({
+        filterByFormula: `AND(
+          {Username} = '${username}',
+          {ScannedUserId} = '${scannedUserId}',
+          IS_AFTER({ScanTimestamp}, '${start}'),
+          IS_BEFORE({ScanTimestamp}, '${end}')
+        )`,
+        maxRecords: 1,
+      })
+      .firstPage();
+
+    return records.length > 0;
+  } catch (error) {
+    console.error("Error checking if user was scanned today:", error);
+    throw error;
+  }
+};
+
 export const getUserCredentials = async (username, password) => {
   try {
     const records = await base(USERS_TABLE_NAME)
@@ -130,6 +174,15 @@ export const getUserById = async (userId) => {
 
 export const storeUserScanData = async (username, user) => {
   try {
+    // Check if user was already scanned today
+    const alreadyScanned = await checkIfUserScannedToday(username, user.id);
+
+    if (alreadyScanned) {
+      throw new Error(
+        "This user has already been scanned today. Only one scan per user per day is allowed."
+      );
+    }
+
     const scanTimestamp = new Date().toISOString();
 
     await base(SCANNED_DATA_TABLE_NAME).create({
@@ -234,17 +287,7 @@ export const getUserDetailedData = async (userId) => {
         "Last name": userData["Last name"] || "",
         Email: userData["Email"] || "",
         "Phone Number": userData["Phone Number"] || "",
-        "Name of institution": userData["Name of institution"] || "",
-        GPA: userData["GPA"] || "",
-        Age: userData["Age"] || "",
-        "Year of going to study abroad":
-          userData["Year of going to study abroad"] || "",
-        "Your highest education level":
-          userData["Your highest education level"] || "",
-        Gender: userData["Gender"] || "",
-        "Field of study": userData["Field of study"] || "",
-        "Level of degree (หลักสูตรที่กำลังจะไปศึกษาต่อ)":
-          userData["Level of degree (หลักสูตรที่กำลังจะไปศึกษาต่อ)"] || "",
+        Organization: userData["Organization"] || "",
       };
     } else {
       console.log("No detailed records found for this userId");

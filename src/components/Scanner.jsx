@@ -55,8 +55,10 @@ function Scanner({ username }) {
           console.log(`Scanning QR code with ID: ${scannedId}`);
           const user = await getUserById(scannedId);
 
+          // Try to store the scan data (this will check for duplicates)
           await storeUserScanData(username, user);
 
+          // If successful, update the local data
           setUserData((prevData) => [
             {
               id: user.id,
@@ -76,8 +78,15 @@ function Scanner({ username }) {
           setTimeout(resetScanner, 3000);
         } catch (err) {
           console.error("Error fetching user data:", err);
-          setError(`Failed to fetch user data: ${err.message}`);
-          setTimeout(resetScanner, 3000);
+
+          // Check if it's a duplicate scan error
+          if (err.message.includes("already been scanned today")) {
+            setError(`⚠️ ${err.message}`);
+          } else {
+            setError(`Failed to fetch user data: ${err.message}`);
+          }
+
+          setTimeout(resetScanner, 5000); // Longer timeout for error messages
         }
       }
     },
@@ -124,7 +133,27 @@ function Scanner({ username }) {
               facingMode={facingMode}
             />
           </div>
-          {error && <p style={styles.errorMessage}>{error}</p>}
+          {error && (
+            <p
+              style={{
+                ...styles.errorMessage,
+                backgroundColor: error.includes("already been scanned")
+                  ? "#fff3cd"
+                  : "#f8d7da",
+                color: error.includes("already been scanned")
+                  ? "#856404"
+                  : "#721c24",
+                border: `1px solid ${
+                  error.includes("already been scanned") ? "#ffeaa7" : "#f5c6cb"
+                }`,
+                borderRadius: "5px",
+                padding: "10px",
+                margin: "10px 0",
+              }}
+            >
+              {error}
+            </p>
+          )}
           {scanResult && (
             <p style={styles.scanResult}>Last Scanned QR Code: {scanResult}</p>
           )}
