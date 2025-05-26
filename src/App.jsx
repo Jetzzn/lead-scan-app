@@ -131,9 +131,6 @@ const styles = {
     padding: "0",
     boxSizing: "border-box",
     minHeight: "100vh",
-    backgroundColor:
-      "linear-gradient(to bottom, Transparente 0%,Transparente 50%,red 50%,red 100%)",
-    background: "#6C40C0",
     background:
       "linear-gradient(90deg,rgba(108, 64, 192, 1) 0%, rgba(90, 111, 197, 1) 50%, rgba(59, 189, 207, 1) 100%)",
   },
