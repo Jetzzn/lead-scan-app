@@ -10,7 +10,6 @@ import Dashboard from "./components/Dashboard";
 import Scanner from "./components/Scanner";
 import DownloadList from "./components/DownloadList";
 import Navbar from "./components/Navbar";
-import Banner from "./components/Banner";
 import { getUserProfile } from "./utils/airtableUtils";
 import "./App.css";
 
@@ -68,14 +67,12 @@ function App() {
     }
     return children;
   };
-
   return (
     <Router>
       <div style={styles.app}>
         {isLoggedIn && (
           <>
             <Navbar userData={userData} onLogout={handleLogout} />
-            <Banner />
           </>
         )}
         <div style={styles.container}>
@@ -134,11 +131,14 @@ const styles = {
     padding: "0",
     boxSizing: "border-box",
     minHeight: "100vh",
-    backgroundColor: "#508bc9",
+    backgroundColor:
+      "linear-gradient(to bottom, Transparente 0%,Transparente 50%,red 50%,red 100%)",
+    background: "#6C40C0",
+    background:
+      "linear-gradient(90deg,rgba(108, 64, 192, 1) 0%, rgba(90, 111, 197, 1) 50%, rgba(59, 189, 207, 1) 100%)",
   },
   container: {
     width: "100%",
-    padding: "0 20px",
     boxSizing: "border-box",
   },
 };

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getUserCredentials } from "../utils/airtableUtils";
-
+import Banner from "./Banner";
 function Login({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -31,52 +31,58 @@ function Login({ onLogin }) {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>Login</h2>
-        {error && <p style={styles.error}>{error}</p>}
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.inputGroup}>
-            <label htmlFor="Username" style={styles.label}>
-              Username:
-            </label>
-            <input
-              type="text"
-              id="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              style={styles.input}
-              disabled={isSubmitting}
-            />
+    <div style={styles.fullContainer}>
+      <div style={styles.bannerContainer}>
+        <Banner />
+
+        <div style={styles.container}>
+          <div style={styles.card}>
+            <h2 style={styles.title}>Login</h2>
+            {error && <p style={styles.error}>{error}</p>}
+            <form onSubmit={handleSubmit} style={styles.form}>
+              <div style={styles.inputGroup}>
+                <label htmlFor="Username" style={styles.label}>
+                  Username:
+                </label>
+                <input
+                  type="text"
+                  id="Username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  style={styles.input}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div style={styles.inputGroup}>
+                <label htmlFor="Password" style={styles.label}>
+                  Password:
+                </label>
+                <input
+                  type="password"
+                  id="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={styles.input}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <button
+                type="submit"
+                style={{
+                  ...styles.button,
+                  backgroundColor: isSubmitting ? "#508bc9" : "#508bc9",
+                  cursor: isSubmitting ? "not-allowed" : "pointer",
+                  opacity: isSubmitting ? 0.7 : 1,
+                }}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Logging in..." : "Login"}
+              </button>
+            </form>
           </div>
-          <div style={styles.inputGroup}>
-            <label htmlFor="Password" style={styles.label}>
-              Password:
-            </label>
-            <input
-              type="password"
-              id="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={styles.input}
-              disabled={isSubmitting}
-            />
-          </div>
-          <button
-            type="submit"
-            style={{
-              ...styles.button,
-              backgroundColor: isSubmitting ? "#508bc9" : "#508bc9",
-              cursor: isSubmitting ? "not-allowed" : "pointer",
-              opacity: isSubmitting ? 0.7 : 1,
-            }}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Logging in..." : "Login"}
-          </button>
-        </form>
+        </div>
       </div>
     </div>
   );
@@ -84,24 +90,24 @@ function Login({ onLogin }) {
 
 const styles = {
   container: {
-    height: "100vh",
+    height: "70vh",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    background: "#508bc9",
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
   },
   card: {
     backgroundColor: "white",
-    padding: "40px",
+    padding: "60px",
     borderRadius: "10px",
     boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
     width: "100%",
-    maxWidth: "400px",
+    maxWidth: "500px",
     textAlign: "center",
   },
   title: {
     marginBottom: "20px",
-    fontSize: "24px",
+    fontSize: "36px",
     color: "#333",
   },
   error: {
