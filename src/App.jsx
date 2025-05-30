@@ -9,6 +9,7 @@ import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import Scanner from "./components/Scanner";
 import DownloadList from "./components/DownloadList";
+import DoorScanner from "./components/DoorScanner"; // เพิ่ม DoorScanner
 import Navbar from "./components/Navbar";
 import { getUserProfile } from "./utils/airtableUtils";
 import "./App.css";
@@ -67,6 +68,7 @@ function App() {
     }
     return children;
   };
+
   return (
     <Router>
       <div style={styles.app}>
@@ -77,6 +79,10 @@ function App() {
         )}
         <div style={styles.container}>
           <Routes>
+            {/* Public Routes - ไม่ต้อง login */}
+            <Route path="/door-scan" element={<DoorScanner />} />
+
+            {/* Protected Routes - ต้อง login */}
             <Route
               path="/login"
               element={

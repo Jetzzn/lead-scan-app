@@ -73,7 +73,7 @@ function DownloadList({ username }) {
           escapeCsvValue(user["Last name"] || ""),
           escapeCsvValue(user["Email"] || ""),
           escapeCsvValue(user["Phone Number"] || ""),
-          escapeCsvValue(user["Organization"] || ""),
+          escapeCsvValue(user["Organization"] || ""), // Added Organization field
           escapeCsvValue(new Date(scanTime).toLocaleString()),
         ];
         csvContent += row.join(",") + "\n";
@@ -231,7 +231,7 @@ function DownloadList({ username }) {
                         <td style={styles.tableCell}>{user["Last name"]}</td>
                         <td style={styles.tableCell}>{user["Email"]}</td>
                         <td style={styles.tableCell}>{user["Phone Number"]}</td>
-                        <td style={styles.tableCell}>In2it</td>
+                        <td style={styles.tableCell}>{user["Organization"]}</td>
                         <td style={styles.tableCell}>
                           {new Date(user.scanTimestamp).toLocaleString()}
                         </td>

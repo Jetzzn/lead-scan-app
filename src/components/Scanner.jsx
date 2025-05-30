@@ -66,6 +66,7 @@ function Scanner({ username }) {
               "Last name": user["Last name"],
               Email: user.Email,
               "Phone Number": user["Phone Number"],
+              Organization: user.Organization, // Added Organization field
               scanTimestamp: new Date().toISOString(),
             },
             ...prevData,
@@ -196,7 +197,7 @@ function Scanner({ username }) {
                         <td style={styles.tableCell}>{user["First name"]}</td>
                         <td style={styles.tableCell}>{user["Last name"]}</td>
                         <td style={styles.tableCell}>{user["Email"]}</td>
-                        <td style={styles.tableCell}>In2it</td>
+                        <td style={styles.tableCell}>{user["Organization"]}</td>
                         <td style={styles.tableCell}>
                           {new Date(user.scanTimestamp).toLocaleString()}
                         </td>

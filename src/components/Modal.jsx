@@ -30,7 +30,7 @@ const Modal = ({ user, onClose }) => {
           </div>
           <div style={styles.field}>
             <span style={styles.label}>Organization:</span>
-            <span style={styles.value}>In2it</span>
+            <span style={styles.value}>{user["Organization"]}</span>
           </div>
           <div style={styles.field}>
             <span style={styles.label}>Scanned At:</span>

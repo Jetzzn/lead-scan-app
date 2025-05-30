@@ -4,6 +4,11 @@ const Banner = () => {
   return (
     <div style={styles.bannerContainer}>
       <div style={styles.bannerContent}>
+        {/* <img
+          src="./src/assets/Banner.png"
+          alt="Banner"
+          style={styles.bannerImage}
+        /> */}
         <h2 style={styles.bannerTitle}>Title</h2>
         <p style={styles.bannerSubtitle}>Subtitle</p>
       </div>
@@ -14,7 +19,7 @@ const Banner = () => {
 const styles = {
   bannerContainer: {
     width: "100%",
-    height: "160px",
+    height: "auto",
     backgroundColor: "#FFD300",
     padding: "20px 0",
     textAlign: "center",
@@ -26,12 +31,19 @@ const styles = {
     margin: "0 auto",
     padding: "0 20px",
   },
+  bannerImage: {
+    width: "100%",
+    height: "auto",
+    maxWidth: "100%",
+    objectFit: "cover",
+    display: "block",
+    margin: "0 auto 20px auto",
+  },
   bannerTitle: {
-    fontSize: "clamp(24px, 4vw, 36px)",
+    fontSize: "clamp(24px, 5vw, 48px)",
     color: "#2c3e50",
     margin: "0 0 10px 0",
     fontWeight: "bold",
-    fontSize: "48px",
   },
   bannerSubtitle: {
     fontSize: "clamp(14px, 2vw, 18px)",

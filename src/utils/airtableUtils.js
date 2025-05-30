@@ -18,7 +18,7 @@ const base = new Airtable({
 const USERS_TABLE_NAME = "Exhibitor";
 const DOWNLOAD_DATA_TABLE_NAME = "Visitors";
 const SCANNED_DATA_TABLE_NAME = "ScannedData";
-
+const DOOR_CHECKIN_TABLE_NAME = "DoorCheckins";
 const columnMapping = {
   Username: "Username",
   "Institution name": "Institution",
@@ -159,6 +159,7 @@ export const getUserById = async (userId) => {
         "Last name": userData["Last name"] || "",
         Email: userData["Email"] || "",
         "Phone Number": userData["Phone Number"] || "",
+        Organization: userData["Organization"] || "", // Added Organization field
       };
     } else {
       console.log("No records found for this userId");
@@ -192,6 +193,7 @@ export const storeUserScanData = async (username, user) => {
       LastName: user["Last name"],
       Email: user.Email,
       PhoneNumber: user["Phone Number"],
+      Organization: user.Organization, // Added Organization field
       ScanTimestamp: scanTimestamp,
     });
 
@@ -218,6 +220,7 @@ export const getUserScanData = async (username) => {
       "Last name": record.get("LastName"),
       Email: record.get("Email"),
       "Phone Number": record.get("PhoneNumber"),
+      Organization: record.get("Organization"), // Added Organization field
       scanTimestamp: record.get("ScanTimestamp"),
     }));
   } catch (error) {
@@ -287,7 +290,7 @@ export const getUserDetailedData = async (userId) => {
         "Last name": userData["Last name"] || "",
         Email: userData["Email"] || "",
         "Phone Number": userData["Phone Number"] || "",
-        Organization: userData["Organization"] || "",
+        Organization: userData["Organization"] || "", // Added Organization field
       };
     } else {
       console.log("No detailed records found for this userId");
@@ -295,6 +298,290 @@ export const getUserDetailedData = async (userId) => {
     }
   } catch (error) {
     console.error("Error fetching detailed user data:", error);
+    throw error;
+  }
+};
+export const storeDoorScanData = async (user) => {
+  try {
+    const checkInTimestamp = new Date().toISOString();
+
+    await base(DOOR_CHECKIN_TABLE_NAME).create({
+      UserId: user.id,
+      FirstName: user["First name"],
+      LastName: user["Last name"],
+      Email: user.Email,
+      PhoneNumber: user["Phone Number"],
+      Organization: user["Organization"] || "",
+      CheckInTime: checkInTimestamp,
+      Status: "Checked In",
+    });
+
+    console.log(`Door check-in recorded for user: ${user.id}`);
+    return true;
+  } catch (error) {
+    console.error("Error storing door scan data:", error);
+    throw error;
+  }
+};
+
+// ตรวจสอบว่า user เคย check-in แล้วหรือไม่
+export const checkIfUserAlreadyCheckedIn = async (userId) => {
+  try {
+    const records = await base(DOOR_CHECKIN_TABLE_NAME)
+      .select({
+        filterByFormula: `{UserId} = '${userId}'`,
+        sort: [{ field: "CheckInTime", direction: "desc" }],
+        maxRecords: 1,
+      })
+      .firstPage();
+
+    if (records.length > 0) {
+      return {
+        alreadyCheckedIn: true,
+        checkInTime: records[0].get("CheckInTime"),
+        record: records[0],
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error checking if user already checked in:", error);
+    return null;
+  }
+};
+
+// ดึงสถิติการ check-in
+export const getDoorScanStats = async () => {
+  try {
+    // ดึงข้อมูลทั้งหมด
+    const allRecords = await base(DOOR_CHECKIN_TABLE_NAME)
+      .select({
+        sort: [{ field: "CheckInTime", direction: "desc" }],
+      })
+      .all();
+
+    // คำนวณสถิติ
+    const today = new Date();
+    const todayStart = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
+    const todayCheckins = allRecords.filter((record) => {
+      const checkInTime = new Date(record.get("CheckInTime"));
+      return checkInTime >= todayStart;
+    });
+
+    // สถิติเพิ่มเติม
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setDate(today.getDate() - today.getDay()); // วันอาทิตย์
+    thisWeekStart.setHours(0, 0, 0, 0);
+
+    const thisWeekCheckins = allRecords.filter((record) => {
+      const checkInTime = new Date(record.get("CheckInTime"));
+      return checkInTime >= thisWeekStart;
+    });
+
+    // สถิติต่อชั่วโมง (วันนี้)
+    const hourlyStats = {};
+    todayCheckins.forEach((record) => {
+      const hour = new Date(record.get("CheckInTime")).getHours();
+      hourlyStats[hour] = (hourlyStats[hour] || 0) + 1;
+    });
+
+    return {
+      totalCheckins: allRecords.length,
+      todayCheckins: todayCheckins.length,
+      thisWeekCheckins: thisWeekCheckins.length,
+      hourlyStats: hourlyStats,
+      peakHour: Object.keys(hourlyStats).reduce(
+        (a, b) => (hourlyStats[a] > hourlyStats[b] ? a : b),
+        "0"
+      ),
+      lastCheckIn:
+        allRecords.length > 0 ? allRecords[0].get("CheckInTime") : null,
+      uniqueOrganizations: [
+        ...new Set(
+          allRecords.map((r) => r.get("Organization")).filter(Boolean)
+        ),
+      ].length,
+    };
+  } catch (error) {
+    console.error("Error getting door scan stats:", error);
+    return {
+      totalCheckins: 0,
+      todayCheckins: 0,
+      thisWeekCheckins: 0,
+      hourlyStats: {},
+      peakHour: "0",
+      lastCheckIn: null,
+      uniqueOrganizations: 0,
+    };
+  }
+};
+
+// ดึงรายการ check-in ล่าสุด
+export const getRecentDoorCheckins = async (limit = 50) => {
+  try {
+    const records = await base(DOOR_CHECKIN_TABLE_NAME)
+      .select({
+        sort: [{ field: "CheckInTime", direction: "desc" }],
+        maxRecords: limit,
+      })
+      .all();
+
+    return records.map((record) => ({
+      id: record.id,
+      userId: record.get("UserId"),
+      firstName: record.get("FirstName"),
+      lastName: record.get("LastName"),
+      email: record.get("Email"),
+      organization: record.get("Organization"),
+      checkInTime: record.get("CheckInTime"),
+      status: record.get("Status"),
+    }));
+  } catch (error) {
+    console.error("Error getting recent door check-ins:", error);
+    throw error;
+  }
+};
+
+// ดึงรายงานการ check-in
+export const getDoorCheckinReport = async (dateFrom, dateTo) => {
+  try {
+    let filterFormula = "";
+
+    if (dateFrom && dateTo) {
+      filterFormula = `AND({CheckInTime} >= '${dateFrom}', {CheckInTime} <= '${dateTo}')`;
+    } else if (dateFrom) {
+      filterFormula = `{CheckInTime} >= '${dateFrom}'`;
+    } else if (dateTo) {
+      filterFormula = `{CheckInTime} <= '${dateTo}'`;
+    }
+
+    const records = await base(DOOR_CHECKIN_TABLE_NAME)
+      .select({
+        ...(filterFormula && { filterByFormula: filterFormula }),
+        sort: [{ field: "CheckInTime", direction: "desc" }],
+      })
+      .all();
+
+    // วิเคราะห์ข้อมูล
+    const analysis = {
+      totalCheckins: records.length,
+      uniqueUsers: [...new Set(records.map((r) => r.get("UserId")))].length,
+      organizations: {},
+      hourlyDistribution: {},
+      dailyDistribution: {},
+    };
+
+    records.forEach((record) => {
+      const organization = record.get("Organization") || "Unknown";
+      const checkInTime = new Date(record.get("CheckInTime"));
+      const hour = checkInTime.getHours();
+      const day = checkInTime.toDateString();
+
+      // นับตาม organization
+      analysis.organizations[organization] =
+        (analysis.organizations[organization] || 0) + 1;
+
+      // นับตามชั่วโมง
+      analysis.hourlyDistribution[hour] =
+        (analysis.hourlyDistribution[hour] || 0) + 1;
+
+      // นับตามวัน
+      analysis.dailyDistribution[day] =
+        (analysis.dailyDistribution[day] || 0) + 1;
+    });
+
+    return {
+      records: records.map((record) => ({
+        id: record.id,
+        userId: record.get("UserId"),
+        name: `${record.get("FirstName")} ${record.get("LastName")}`,
+        email: record.get("Email"),
+        organization: record.get("Organization"),
+        checkInTime: record.get("CheckInTime"),
+      })),
+      analysis: analysis,
+    };
+  } catch (error) {
+    console.error("Error getting door check-in report:", error);
+    throw error;
+  }
+};
+
+// ลบข้อมูล check-in (สำหรับ admin)
+export const deleteDoorCheckin = async (recordId) => {
+  try {
+    await base(DOOR_CHECKIN_TABLE_NAME).destroy(recordId);
+    console.log("Door check-in record deleted:", recordId);
+    return true;
+  } catch (error) {
+    console.error("Error deleting door check-in record:", error);
+    throw error;
+  }
+};
+
+// Reset check-in status (สำหรับ testing)
+export const resetUserCheckinStatus = async (userId) => {
+  try {
+    const records = await base(DOOR_CHECKIN_TABLE_NAME)
+      .select({
+        filterByFormula: `{UserId} = '${userId}'`,
+      })
+      .all();
+
+    if (records.length > 0) {
+      const recordIds = records.map((record) => record.id);
+      await base(DOOR_CHECKIN_TABLE_NAME).destroy(recordIds);
+      console.log(`Reset check-in status for user: ${userId}`);
+      return records.length;
+    }
+
+    return 0;
+  } catch (error) {
+    console.error("Error resetting user check-in status:", error);
+    throw error;
+  }
+};
+
+// Export ข้อมูل check-in เป็น CSV
+export const exportDoorCheckinsToCSV = async (dateFrom, dateTo) => {
+  try {
+    const reportData = await getDoorCheckinReport(dateFrom, dateTo);
+
+    const headers = [
+      "User ID",
+      "Name",
+      "Email",
+      "Organization",
+      "Check-in Time",
+    ];
+
+    // เพิ่ม BOM สำหรับ UTF-8
+    let csvContent = "\uFEFF";
+    csvContent += headers.join(",") + "\n";
+
+    reportData.records.forEach((record) => {
+      const row = [
+        record.userId,
+        `"${record.name}"`,
+        `"${record.email}"`,
+        `"${record.organization || ""}"`,
+        `"${new Date(record.checkInTime).toLocaleString()}"`,
+      ];
+      csvContent += row.join(",") + "\n";
+    });
+
+    return {
+      csvContent,
+      filename: `door_checkins_${new Date().toISOString().slice(0, 10)}.csv`,
+      stats: reportData.analysis,
+    };
+  } catch (error) {
+    console.error("Error exporting door check-ins to CSV:", error);
     throw error;
   }
 };

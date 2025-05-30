@@ -29,7 +29,7 @@ const PopupDetail = ({ selectedUser, closePopup }) => {
                 <strong>Email:</strong> {selectedUser["Email"] || "-"}
               </p>
               <p>
-                <strong>Gender:</strong> {selectedUser["Gender"] || "-"}
+                <strong>Organization:</strong> {selectedUser["Organization"] || "-"}
               </p>
               <p>
                 <strong>Age:</strong> {selectedUser["Age"] || "-"}
