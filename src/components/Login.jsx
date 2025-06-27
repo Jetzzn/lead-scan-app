@@ -34,7 +34,6 @@ function Login({ onLogin }) {
     <div style={styles.fullContainer}>
       <div style={styles.bannerContainer}>
         <Banner />
-
         <div style={styles.container}>
           <div style={styles.card}>
             <h2 style={styles.title}>Login</h2>
