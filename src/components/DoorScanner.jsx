@@ -45,6 +45,17 @@ function DoorScanner() {
     loadStats();
   }, []);
 
+  // Auto reset scanner when door changes
+  useEffect(() => {
+    if (selectedDoor) {
+      setIsScanning(true);
+      setScanResult(null);
+      setError(null);
+      setSuccess(null);
+      setKey((prevKey) => prevKey + 1);
+    }
+  }, [selectedDoor]);
+
   const loadStats = async () => {
     try {
       const statsData = await getDoorScanStats();
@@ -61,6 +72,20 @@ function DoorScanner() {
     setSuccess(null);
     setKey((prevKey) => prevKey + 1);
   }, []);
+
+  // Handle door selection change - auto reset scanner
+  const handleDoorChange = (event) => {
+    const newDoor = event.target.value;
+    setSelectedDoor(newDoor);
+
+    // Force reset scanner when door changes
+    // Clear all states and force component remount
+    setIsScanning(true);
+    setScanResult(null);
+    setError(null);
+    setSuccess(null);
+    setKey((prevKey) => prevKey + 1); // Force QRScannerComponent remount
+  };
 
   const handleScan = useCallback(
     async (data) => {
@@ -161,17 +186,20 @@ function DoorScanner() {
             <MapPin className="icon-small" />
             Choose Door:
           </label>
-          <select
-            value={selectedDoor}
-            onChange={(e) => setSelectedDoor(e.target.value)}
-          >
-            <option value="">-- Select --</option>
-            {doorOptions.map((door) => (
-              <option key={door.value} value={door.value}>
-                {door.label}
-              </option>
-            ))}
-          </select>
+          <div className="door-select-row">
+            <select value={selectedDoor} onChange={handleDoorChange}>
+              <option value="">-- Select --</option>
+              {doorOptions.map((door) => (
+                <option key={door.value} value={door.value}>
+                  {door.label}
+                </option>
+              ))}
+            </select>
+            <button className="reset-btn" onClick={resetScanner}>
+              <RotateCcw className="icon-small" />
+              <span>Reset</span>
+            </button>
+          </div>
         </div>
 
         <div className="scanner-area">
@@ -206,10 +234,6 @@ function DoorScanner() {
           <button onClick={toggleCamera}>
             <Camera className="icon-small" />
             <span>Switch Camera</span>
-          </button>
-          <button onClick={resetScanner}>
-            <RotateCcw className="icon-small" />
-            <span>Reset</span>
           </button>
         </div>
         <div className="stats-grid">
@@ -297,12 +321,44 @@ function DoorScanner() {
           color: #34495e;
         }
 
+        .door-select-row {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+        }
+
         .door-select-area select {
-          width: 100%;
+          flex: 1;
           padding: 12px;
           border-radius: 6px;
           border: 1px solid #ccd6dd;
           font-size: 16px;
+          transition: border-color 0.3s ease;
+        }
+
+        .door-select-area select:focus {
+          border-color: #3498db;
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .reset-btn {
+          padding: 12px 16px;
+          background: #e74c3c;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 14px;
+          white-space: nowrap;
+          transition: background-color 0.3s ease;
+        }
+
+        .reset-btn:hover {
+          background: #c0392b;
         }
 
         .stats-grid {
@@ -344,6 +400,11 @@ function DoorScanner() {
           gap: 6px;
           font-size: 14px;
           min-height: 44px;
+          transition: background-color 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+          background: #21618c;
         }
 
         .scanner-area {
@@ -366,16 +427,19 @@ function DoorScanner() {
         .message.success {
           background: #eafaf1;
           color: #27ae60;
+          border: 1px solid #a3e4d7;
         }
 
         .message.error {
           background: #fdecea;
           color: #c0392b;
+          border: 1px solid #f5b7b1;
         }
 
         .message.processing {
           background: #fff6e3;
           color: #f39c12;
+          border: 1px solid #f9e79f;
         }
 
         .spin {
@@ -406,8 +470,13 @@ function DoorScanner() {
           gap: 8px;
           font-size: 14px;
           min-height: 44px;
-          flex: 1;
           justify-content: center;
+          transition: background-color 0.3s ease;
+          width: 100%;
+        }
+
+        .controls button:hover {
+          background: #2c3e50;
         }
 
         .recent-checkins {
@@ -513,6 +582,20 @@ function DoorScanner() {
           .controls button {
             padding: 14px 20px;
             font-size: 16px;
+          }
+
+          .door-select-row {
+            flex-direction: column;
+            gap: 8px;
+          }
+
+          .door-select-area select {
+            width: 100%;
+          }
+
+          .reset-btn {
+            width: 100%;
+            justify-content: center;
           }
 
           .message {
