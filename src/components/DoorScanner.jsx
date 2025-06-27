@@ -174,25 +174,6 @@ function DoorScanner() {
           </select>
         </div>
 
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="number">{stats.todayCheckins}</div>
-            <div className="label">Today's Check-ins</div>
-          </div>
-          <div className="stat-card">
-            <div className="number">{stats.totalCheckins}</div>
-            <div className="label">Total Check-ins</div>
-          </div>
-          <div className="stat-card">
-            <div className="number">{stats.uniqueUsers}</div>
-            <div className="label">Unique Users</div>
-          </div>
-          <button className="refresh-btn" onClick={refreshStats}>
-            <RefreshCcw className="icon-small" />
-            Refresh Stats
-          </button>
-        </div>
-
         <div className="scanner-area">
           <QRScannerComponent
             key={key}
@@ -224,23 +205,42 @@ function DoorScanner() {
         <div className="controls">
           <button onClick={toggleCamera}>
             <Camera className="icon-small" />
-            Switch Camera
+            <span>Switch Camera</span>
           </button>
           <button onClick={resetScanner}>
             <RotateCcw className="icon-small" />
-            Reset
+            <span>Reset</span>
           </button>
         </div>
-
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="number">{stats.todayCheckins}</div>
+            <div className="label">Today's Check-ins</div>
+          </div>
+          <div className="stat-card">
+            <div className="number">{stats.totalCheckins}</div>
+            <div className="label">Total Check-ins</div>
+          </div>
+          <div className="stat-card">
+            <div className="number">{stats.uniqueUsers}</div>
+            <div className="label">Unique Users</div>
+          </div>
+          <button className="refresh-btn" onClick={refreshStats}>
+            <RefreshCcw className="icon-small" />
+            <span className="refresh-text">Refresh Stats</span>
+          </button>
+        </div>
         {recentScans.length > 0 && (
           <div className="recent-checkins">
             <h3>Recent Check-ins</h3>
             <ul>
               {recentScans.slice(0, 5).map((scan, idx) => (
                 <li key={scan.id + idx}>
-                  <span>User: {scan.userId}</span>
-                  <span>{scan.doorName}</span>
-                  <span>{new Date(scan.time).toLocaleTimeString()}</span>
+                  <span className="user-info">User: {scan.userId}</span>
+                  <span className="door-info">{scan.doorName}</span>
+                  <span className="time-info">
+                    {new Date(scan.time).toLocaleTimeString()}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -252,7 +252,7 @@ function DoorScanner() {
       <style>{`
         .scanner-container {
           font-family: 'Segoe UI', sans-serif;
-          padding: 30px;
+          padding: 20px;
           background: #f9fbfc;
           min-height: 100vh;
         }
@@ -265,15 +265,20 @@ function DoorScanner() {
         .scanner-header h1 {
           font-size: 32px;
           color: #2c3e50;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
         }
 
         .scanner-header p {
           color: #7f8c8d;
+          margin-top: 10px;
         }
 
         .scanner-panel {
           background: #fff;
-          padding: 30px;
+          padding: 25px;
           border-radius: 12px;
           box-shadow: 0 4px 12px rgba(0,0,0,0.05);
           max-width: 800px;
@@ -294,50 +299,51 @@ function DoorScanner() {
 
         .door-select-area select {
           width: 100%;
-          padding: 10px;
+          padding: 12px;
           border-radius: 6px;
           border: 1px solid #ccd6dd;
+          font-size: 16px;
         }
 
         .stats-grid {
-          display: flex;
-          flex-wrap: wrap;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
           gap: 15px;
           margin-bottom: 25px;
-          align-items: center;
         }
 
         .stat-card {
           background: #f0f4f8;
           border-radius: 10px;
-          padding: 15px 20px;
-          flex: 1;
-          min-width: 150px;
+          padding: 15px;
           text-align: center;
         }
 
         .stat-card .number {
-          font-size: 28px;
+          font-size: 24px;
           font-weight: bold;
           color: #2ecc71;
         }
 
         .stat-card .label {
           color: #7f8c8d;
-          font-size: 13px;
+          font-size: 12px;
+          margin-top: 5px;
         }
 
         .refresh-btn {
           background: #2980b9;
           color: #fff;
-          padding: 10px 16px;
+          padding: 12px 16px;
           border: none;
           border-radius: 8px;
           cursor: pointer;
           display: flex;
           align-items: center;
+          justify-content: center;
           gap: 6px;
-          margin-left: auto;
+          font-size: 14px;
+          min-height: 44px;
         }
 
         .scanner-area {
@@ -354,6 +360,7 @@ function DoorScanner() {
           gap: 8px;
           justify-content: center;
           font-weight: 500;
+          font-size: 14px;
         }
 
         .message.success {
@@ -388,7 +395,7 @@ function DoorScanner() {
         }
 
         .controls button {
-          padding: 10px 20px;
+          padding: 12px 20px;
           background: #34495e;
           color: white;
           border: none;
@@ -397,6 +404,10 @@ function DoorScanner() {
           display: flex;
           align-items: center;
           gap: 8px;
+          font-size: 14px;
+          min-height: 44px;
+          flex: 1;
+          justify-content: center;
         }
 
         .recent-checkins {
@@ -407,8 +418,9 @@ function DoorScanner() {
         }
 
         .recent-checkins h3 {
-          margin-bottom: 10px;
+          margin-bottom: 15px;
           color: #2c3e50;
+          font-size: 18px;
         }
 
         .recent-checkins ul {
@@ -418,29 +430,179 @@ function DoorScanner() {
 
         .recent-checkins li {
           display: flex;
-          justify-content: space-between;
-          padding: 8px 0;
+          flex-direction: column;
+          padding: 12px 0;
           border-bottom: 1px solid #e0e4e8;
           font-size: 14px;
+          gap: 4px;
+        }
+
+        .recent-checkins li:last-child {
+          border-bottom: none;
+        }
+
+        .user-info {
+          font-weight: bold;
+          color: #2c3e50;
+        }
+
+        .door-info {
+          color: #3498db;
+        }
+
+        .time-info {
+          color: #7f8c8d;
+          font-size: 12px;
         }
 
         .icon {
-          vertical-align: middle;
-          margin-right: 8px;
+          width: 20px;
+          height: 20px;
         }
 
         .icon-small {
-          vertical-align: middle;
-          margin-right: 6px;
+          width: 16px;
+          height: 16px;
         }
 
-        @media (max-width: 600px) {
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+          .scanner-container {
+            padding: 15px;
+          }
+
+          .scanner-header h1 {
+            font-size: 24px;
+          }
+
+          .scanner-header p {
+            font-size: 14px;
+          }
+
+          .scanner-panel {
+            padding: 20px;
+          }
+
           .stats-grid {
-            flex-direction: column;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+          }
+
+          .stat-card {
+            padding: 12px;
+          }
+
+          .stat-card .number {
+            font-size: 20px;
+          }
+
+          .stat-card .label {
+            font-size: 11px;
+          }
+
+          .refresh-btn {
+            grid-column: 1 / -1;
+            padding: 10px;
           }
 
           .controls {
             flex-direction: column;
+            gap: 10px;
+          }
+
+          .controls button {
+            padding: 14px 20px;
+            font-size: 16px;
+          }
+
+          .message {
+            font-size: 13px;
+            padding: 10px;
+            text-align: left;
+          }
+
+          .recent-checkins {
+            padding: 15px;
+          }
+
+          .recent-checkins h3 {
+            font-size: 16px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .scanner-container {
+            padding: 10px;
+          }
+
+          .scanner-header h1 {
+            font-size: 20px;
+            flex-direction: column;
+            gap: 5px;
+          }
+
+          .scanner-panel {
+            padding: 15px;
+          }
+
+          .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 8px;
+          }
+
+          .stat-card {
+            padding: 10px;
+          }
+
+          .door-select-area select {
+            padding: 14px;
+            font-size: 16px;
+          }
+
+          .controls button {
+            padding: 16px 20px;
+            font-size: 16px;
+          }
+
+          .refresh-text {
+            display: none;
+          }
+
+          .controls button span {
+            font-size: 14px;
+          }
+
+          .recent-checkins {
+            padding: 12px;
+          }
+
+          .recent-checkins li {
+            padding: 10px 0;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .scanner-header h1 {
+            font-size: 18px;
+          }
+
+          .scanner-panel {
+            padding: 12px;
+          }
+
+          .controls button {
+            padding: 14px 16px;
+            font-size: 14px;
+          }
+
+          .controls button span {
+            display: none;
+          }
+
+          .message {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
           }
         }
       `}</style>
