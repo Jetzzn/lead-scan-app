@@ -11,6 +11,7 @@ import Scanner from "./components/Scanner";
 import DownloadList from "./components/DownloadList";
 import DoorScanner from "./components/DoorScanner"; // เพิ่ม DoorScanner
 import Navbar from "./components/Navbar";
+import CheckInReport from "./components/CheckInReport";
 import { getUserProfile } from "./utils/airtableUtils";
 import "./App.css";
 
@@ -81,7 +82,7 @@ function App() {
           <Routes>
             {/* Public Routes - ไม่ต้อง login */}
             <Route path="/door-scan" element={<DoorScanner />} />
-
+            <Route path="/report" element={<CheckInReport />} />
             {/* Protected Routes - ต้อง login */}
             <Route
               path="/login"

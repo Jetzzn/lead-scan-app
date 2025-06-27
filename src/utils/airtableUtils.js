@@ -21,7 +21,7 @@ const SCANNED_DATA_TABLE_NAME = "ScannedData";
 const DOOR_CHECKIN_TABLE_NAME = "DoorCheckins";
 const columnMapping = {
   Username: "Username",
-  "Institution name": "Institution",
+  "Company name": "Company name",
   Booth: "booth",
 };
 
@@ -159,7 +159,7 @@ export const getUserById = async (userId) => {
         "Last name": userData["Last name"] || "",
         Email: userData["Email"] || "",
         "Phone Number": userData["Phone Number"] || "",
-        Organization: userData["Organization"] || "", // Added Organization field
+        Organization: userData["Organization"] || "",
       };
     } else {
       console.log("No records found for this userId");
@@ -193,7 +193,7 @@ export const storeUserScanData = async (username, user) => {
       LastName: user["Last name"],
       Email: user.Email,
       PhoneNumber: user["Phone Number"],
-      Organization: user.Organization, // Added Organization field
+      Organization: user.Organization,
       ScanTimestamp: scanTimestamp,
     });
 
@@ -220,7 +220,7 @@ export const getUserScanData = async (username) => {
       "Last name": record.get("LastName"),
       Email: record.get("Email"),
       "Phone Number": record.get("PhoneNumber"),
-      Organization: record.get("Organization"), // Added Organization field
+      Organization: record.get("Organization"),
       scanTimestamp: record.get("ScanTimestamp"),
     }));
   } catch (error) {
@@ -290,7 +290,7 @@ export const getUserDetailedData = async (userId) => {
         "Last name": userData["Last name"] || "",
         Email: userData["Email"] || "",
         "Phone Number": userData["Phone Number"] || "",
-        Organization: userData["Organization"] || "", // Added Organization field
+        Organization: userData["Organization"] || "", 
       };
     } else {
       console.log("No detailed records found for this userId");
@@ -301,22 +301,20 @@ export const getUserDetailedData = async (userId) => {
     throw error;
   }
 };
-export const storeDoorScanData = async (user) => {
+
+// Updated door scanner utilities for dropdown door selection and simple ID logging
+
+export const storeDoorScanData = async (userId, selectedDoor) => {
   try {
     const checkInTimestamp = new Date().toISOString();
 
     await base(DOOR_CHECKIN_TABLE_NAME).create({
-      UserId: user.id,
-      FirstName: user["First name"],
-      LastName: user["Last name"],
-      Email: user.Email,
-      PhoneNumber: user["Phone Number"],
-      Organization: user["Organization"] || "",
+      UserId: userId,
+      DoorName: selectedDoor,
       CheckInTime: checkInTimestamp,
-      Status: "Checked In",
     });
 
-    console.log(`Door check-in recorded for user: ${user.id}`);
+    console.log(`Door check-in recorded - User: ${userId}, Door: ${selectedDoor}`);
     return true;
   } catch (error) {
     console.error("Error storing door scan data:", error);
@@ -324,12 +322,12 @@ export const storeDoorScanData = async (user) => {
   }
 };
 
-// ตรวจสอบว่า user เคย check-in แล้วหรือไม่
-export const checkIfUserAlreadyCheckedIn = async (userId) => {
+// ตรวจสอบว่า user เคย check-in ที่ประตูนี้แล้วหรือไม่
+export const checkIfUserAlreadyCheckedIn = async (userId, doorName) => {
   try {
     const records = await base(DOOR_CHECKIN_TABLE_NAME)
       .select({
-        filterByFormula: `{UserId} = '${userId}'`,
+        filterByFormula: `AND({UserId} = '${userId}', {DoorName} = '${doorName}')`,
         sort: [{ field: "CheckInTime", direction: "desc" }],
         maxRecords: 1,
       })
@@ -390,21 +388,27 @@ export const getDoorScanStats = async () => {
       hourlyStats[hour] = (hourlyStats[hour] || 0) + 1;
     });
 
+    // สถิติตามประตู
+    const doorStats = {};
+    allRecords.forEach((record) => {
+      const door = record.get("DoorName") || "Unknown";
+      doorStats[door] = (doorStats[door] || 0) + 1;
+    });
+
     return {
       totalCheckins: allRecords.length,
       todayCheckins: todayCheckins.length,
       thisWeekCheckins: thisWeekCheckins.length,
       hourlyStats: hourlyStats,
+      doorStats: doorStats,
       peakHour: Object.keys(hourlyStats).reduce(
         (a, b) => (hourlyStats[a] > hourlyStats[b] ? a : b),
         "0"
       ),
       lastCheckIn:
         allRecords.length > 0 ? allRecords[0].get("CheckInTime") : null,
-      uniqueOrganizations: [
-        ...new Set(
-          allRecords.map((r) => r.get("Organization")).filter(Boolean)
-        ),
+      uniqueUsers: [
+        ...new Set(allRecords.map((r) => r.get("UserId")).filter(Boolean)),
       ].length,
     };
   } catch (error) {
@@ -414,9 +418,10 @@ export const getDoorScanStats = async () => {
       todayCheckins: 0,
       thisWeekCheckins: 0,
       hourlyStats: {},
+      doorStats: {},
       peakHour: "0",
       lastCheckIn: null,
-      uniqueOrganizations: 0,
+      uniqueUsers: 0,
     };
   }
 };
@@ -434,10 +439,7 @@ export const getRecentDoorCheckins = async (limit = 50) => {
     return records.map((record) => ({
       id: record.id,
       userId: record.get("UserId"),
-      firstName: record.get("FirstName"),
-      lastName: record.get("LastName"),
-      email: record.get("Email"),
-      organization: record.get("Organization"),
+      doorName: record.get("DoorName"),
       checkInTime: record.get("CheckInTime"),
       status: record.get("Status"),
     }));
@@ -448,16 +450,25 @@ export const getRecentDoorCheckins = async (limit = 50) => {
 };
 
 // ดึงรายงานการ check-in
-export const getDoorCheckinReport = async (dateFrom, dateTo) => {
+export const getDoorCheckinReport = async (dateFrom, dateTo, doorName = null) => {
   try {
     let filterFormula = "";
+    const conditions = [];
 
     if (dateFrom && dateTo) {
-      filterFormula = `AND({CheckInTime} >= '${dateFrom}', {CheckInTime} <= '${dateTo}')`;
+      conditions.push(`AND({CheckInTime} >= '${dateFrom}', {CheckInTime} <= '${dateTo}')`);
     } else if (dateFrom) {
-      filterFormula = `{CheckInTime} >= '${dateFrom}'`;
+      conditions.push(`{CheckInTime} >= '${dateFrom}'`);
     } else if (dateTo) {
-      filterFormula = `{CheckInTime} <= '${dateTo}'`;
+      conditions.push(`{CheckInTime} <= '${dateTo}'`);
+    }
+
+    if (doorName) {
+      conditions.push(`{DoorName} = '${doorName}'`);
+    }
+
+    if (conditions.length > 0) {
+      filterFormula = conditions.length === 1 ? conditions[0] : `AND(${conditions.join(', ')})`;
     }
 
     const records = await base(DOOR_CHECKIN_TABLE_NAME)
@@ -471,20 +482,19 @@ export const getDoorCheckinReport = async (dateFrom, dateTo) => {
     const analysis = {
       totalCheckins: records.length,
       uniqueUsers: [...new Set(records.map((r) => r.get("UserId")))].length,
-      organizations: {},
+      doors: {},
       hourlyDistribution: {},
       dailyDistribution: {},
     };
 
     records.forEach((record) => {
-      const organization = record.get("Organization") || "Unknown";
+      const door = record.get("DoorName") || "Unknown";
       const checkInTime = new Date(record.get("CheckInTime"));
       const hour = checkInTime.getHours();
       const day = checkInTime.toDateString();
 
-      // นับตาม organization
-      analysis.organizations[organization] =
-        (analysis.organizations[organization] || 0) + 1;
+      // นับตามประตู
+      analysis.doors[door] = (analysis.doors[door] || 0) + 1;
 
       // นับตามชั่วโมง
       analysis.hourlyDistribution[hour] =
@@ -499,9 +509,7 @@ export const getDoorCheckinReport = async (dateFrom, dateTo) => {
       records: records.map((record) => ({
         id: record.id,
         userId: record.get("UserId"),
-        name: `${record.get("FirstName")} ${record.get("LastName")}`,
-        email: record.get("Email"),
-        organization: record.get("Organization"),
+        doorName: record.get("DoorName"),
         checkInTime: record.get("CheckInTime"),
       })),
       analysis: analysis,
@@ -525,18 +533,23 @@ export const deleteDoorCheckin = async (recordId) => {
 };
 
 // Reset check-in status (สำหรับ testing)
-export const resetUserCheckinStatus = async (userId) => {
+export const resetUserCheckinStatus = async (userId, doorName = null) => {
   try {
+    let filterFormula = `{UserId} = '${userId}'`;
+    if (doorName) {
+      filterFormula = `AND({UserId} = '${userId}', {DoorName} = '${doorName}')`;
+    }
+
     const records = await base(DOOR_CHECKIN_TABLE_NAME)
       .select({
-        filterByFormula: `{UserId} = '${userId}'`,
+        filterByFormula: filterFormula,
       })
       .all();
 
     if (records.length > 0) {
       const recordIds = records.map((record) => record.id);
       await base(DOOR_CHECKIN_TABLE_NAME).destroy(recordIds);
-      console.log(`Reset check-in status for user: ${userId}`);
+      console.log(`Reset check-in status for user: ${userId} at door: ${doorName || 'all doors'}`);
       return records.length;
     }
 
@@ -547,16 +560,14 @@ export const resetUserCheckinStatus = async (userId) => {
   }
 };
 
-// Export ข้อมูل check-in เป็น CSV
-export const exportDoorCheckinsToCSV = async (dateFrom, dateTo) => {
+// Export ข้อมูล check-in เป็น CSV
+export const exportDoorCheckinsToCSV = async (dateFrom, dateTo, doorName = null) => {
   try {
-    const reportData = await getDoorCheckinReport(dateFrom, dateTo);
+    const reportData = await getDoorCheckinReport(dateFrom, dateTo, doorName);
 
     const headers = [
       "User ID",
-      "Name",
-      "Email",
-      "Organization",
+      "Door Name",
       "Check-in Time",
     ];
 
@@ -567,9 +578,7 @@ export const exportDoorCheckinsToCSV = async (dateFrom, dateTo) => {
     reportData.records.forEach((record) => {
       const row = [
         record.userId,
-        `"${record.name}"`,
-        `"${record.email}"`,
-        `"${record.organization || ""}"`,
+        `"${record.doorName || ""}"`,
         `"${new Date(record.checkInTime).toLocaleString()}"`,
       ];
       csvContent += row.join(",") + "\n";
@@ -577,7 +586,7 @@ export const exportDoorCheckinsToCSV = async (dateFrom, dateTo) => {
 
     return {
       csvContent,
-      filename: `door_checkins_${new Date().toISOString().slice(0, 10)}.csv`,
+      filename: `door_checkins_${doorName ? doorName + '_' : ''}${new Date().toISOString().slice(0, 10)}.csv`,
       stats: reportData.analysis,
     };
   } catch (error) {

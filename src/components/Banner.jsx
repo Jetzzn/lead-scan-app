@@ -9,7 +9,7 @@ const Banner = () => {
           alt="Banner"
           style={styles.bannerImage}
         /> */}
-        <h2 style={styles.bannerTitle}>Title</h2>
+        <h2 style={styles.bannerTitle}>In2it Mockup Lead Scan</h2>
         <p style={styles.bannerSubtitle}>Subtitle</p>
       </div>
     </div>

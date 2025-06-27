@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import QRScannerComponent from "./QRScannerComponent";
 import {
-  getUserById,
   storeDoorScanData,
   checkIfUserAlreadyCheckedIn,
   getDoorScanStats,
@@ -14,18 +13,33 @@ import {
   CheckCircle,
   XCircle,
   LoaderCircle,
+  MapPin,
 } from "lucide-react";
 
 function DoorScanner() {
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [scannedUser, setScannedUser] = useState(null);
   const [isScanning, setIsScanning] = useState(true);
   const [key, setKey] = useState(0);
   const [facingMode, setFacingMode] = useState("environment");
-  const [stats, setStats] = useState({ totalCheckins: 0, todayCheckins: 0 });
+  const [stats, setStats] = useState({
+    totalCheckins: 0,
+    todayCheckins: 0,
+    doorStats: {},
+  });
   const [recentScans, setRecentScans] = useState([]);
+  const [selectedDoor, setSelectedDoor] = useState("");
+
+  // รายการประตูที่สามารถเลือกได้
+  const doorOptions = [
+    { value: "Main Entrance", label: "Main Entrance" },
+    { value: "Side Door A", label: "Side Door A" },
+    { value: "Side Door B", label: "Side Door B" },
+    { value: "Emergency Exit", label: "Emergency Exit" },
+    { value: "VIP Entrance", label: "VIP Entrance" },
+    { value: "Staff Entrance", label: "Staff Entrance" },
+  ];
 
   useEffect(() => {
     loadStats();
@@ -45,23 +59,30 @@ function DoorScanner() {
     setScanResult(null);
     setError(null);
     setSuccess(null);
-    setScannedUser(null);
     setKey((prevKey) => prevKey + 1);
   }, []);
 
   const handleScan = useCallback(
     async (data) => {
       if (data && isScanning) {
+        if (!selectedDoor) {
+          setError("Please select a door first!");
+          return;
+        }
+
         setIsScanning(false);
         const scannedId = data.text;
         setScanResult(scannedId);
 
         try {
-          const alreadyCheckedIn = await checkIfUserAlreadyCheckedIn(scannedId);
+          const alreadyCheckedIn = await checkIfUserAlreadyCheckedIn(
+            scannedId,
+            selectedDoor
+          );
 
           if (alreadyCheckedIn) {
             setError(
-              `This person has already checked in at ${new Date(
+              `User ID ${scannedId} has already checked in at ${selectedDoor} on ${new Date(
                 alreadyCheckedIn.checkInTime
               ).toLocaleString()}`
             );
@@ -69,27 +90,31 @@ function DoorScanner() {
             return;
           }
 
-          const user = await getUserById(scannedId);
-          await storeDoorScanData(user);
+          await storeDoorScanData(scannedId, selectedDoor);
 
-          setScannedUser(user);
-          setSuccess(`Welcome ${user["First name"]} ${user["Last name"]}!`);
+          setSuccess(
+            `Check-in successful! User ID: ${scannedId} at ${selectedDoor}`
+          );
           setError(null);
 
           setRecentScans((prev) => [
             {
-              id: user.id,
-              name: `${user["First name"]} ${user["Last name"]}`,
-              email: user.Email,
+              id: scannedId,
+              userId: scannedId,
+              doorName: selectedDoor,
               time: new Date().toISOString(),
             },
-            ...prev.slice(0, 4),
+            ...prev.slice(0, 49), // Keep up to 50 records
           ]);
 
           setStats((prev) => ({
             ...prev,
             todayCheckins: prev.todayCheckins + 1,
             totalCheckins: prev.totalCheckins + 1,
+            doorStats: {
+              ...prev.doorStats,
+              [selectedDoor]: (prev.doorStats[selectedDoor] || 0) + 1,
+            },
           }));
 
           setTimeout(resetScanner, 3000);
@@ -100,7 +125,7 @@ function DoorScanner() {
         }
       }
     },
-    [isScanning, resetScanner]
+    [isScanning, selectedDoor, resetScanner]
   );
 
   const handleError = useCallback((err) => {
@@ -121,277 +146,303 @@ function DoorScanner() {
   };
 
   return (
-    <div className="container">
-      <div className="header">
-        <h1 className="title">
-          <DoorOpen
-            size={28}
-            style={{ verticalAlign: "middle", marginRight: 8 }}
-          />
+    <div className="scanner-container">
+      <div className="scanner-header">
+        <h1>
+          <DoorOpen className="icon" />
           Door Check-In System
         </h1>
-        <p className="subtitle">Scan QR code to check in to the event</p>
+        <p>Scan QR Code at a selected door</p>
       </div>
 
-      <div className="stats">
-        <div className="stat">
-          <div className="stat-number">{stats.todayCheckins}</div>
-          <div className="stat-label">Today's Check-ins</div>
+      <div className="scanner-panel">
+        <div className="door-select-area">
+          <label>
+            <MapPin className="icon-small" />
+            Choose Door:
+          </label>
+          <select
+            value={selectedDoor}
+            onChange={(e) => setSelectedDoor(e.target.value)}
+          >
+            <option value="">-- Select --</option>
+            {doorOptions.map((door) => (
+              <option key={door.value} value={door.value}>
+                {door.label}
+              </option>
+            ))}
+          </select>
         </div>
-        <div className="stat">
-          <div className="stat-number">{stats.totalCheckins}</div>
-          <div className="stat-label">Total Check-ins</div>
+
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="number">{stats.todayCheckins}</div>
+            <div className="label">Today's Check-ins</div>
+          </div>
+          <div className="stat-card">
+            <div className="number">{stats.totalCheckins}</div>
+            <div className="label">Total Check-ins</div>
+          </div>
+          <div className="stat-card">
+            <div className="number">{stats.uniqueUsers}</div>
+            <div className="label">Unique Users</div>
+          </div>
+          <button className="refresh-btn" onClick={refreshStats}>
+            <RefreshCcw className="icon-small" />
+            Refresh Stats
+          </button>
         </div>
-        <button className="button" onClick={refreshStats}>
-          <RefreshCcw
-            size={18}
-            style={{ verticalAlign: "middle", marginRight: 6 }}
+
+        <div className="scanner-area">
+          <QRScannerComponent
+            key={key}
+            delay={500}
+            onError={handleError}
+            onScan={handleScan}
+            facingMode={facingMode}
           />
-          Refresh
-        </button>
-      </div>
 
-      <div className="scanner">
-        <QRScannerComponent
-          key={key}
-          delay={500}
-          onError={handleError}
-          onScan={handleScan}
-          facingMode={facingMode}
-        />
-
-        {error && (
-          <div className="error">
-            <XCircle
-              size={16}
-              style={{ verticalAlign: "middle", marginRight: 6 }}
-            />
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="success">
-            <CheckCircle
-              size={16}
-              style={{ verticalAlign: "middle", marginRight: 6 }}
-            />{" "}
-            {success}
-            {scannedUser && (
-              <div className="user-info">
-                <p>
-                  <strong>Name:</strong> {scannedUser["First name"]}{" "}
-                  {scannedUser["Last name"]}
-                </p>
-                <p>
-                  <strong>Email:</strong> {scannedUser.Email}
-                </p>
-                <p>
-                  <strong>Organization:</strong>{" "}
-                  {scannedUser["Organization"] || "N/A"}
-                </p>
-                <p>
-                  <strong>Check-in Time:</strong> {new Date().toLocaleString()}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-        {scanResult && !error && !success && (
-          <div className="processing">
-            <LoaderCircle
-              size={16}
-              className="spin"
-              style={{ verticalAlign: "middle", marginRight: 6 }}
-            />{" "}
-            Processing: {scanResult}
-          </div>
-        )}
-      </div>
-
-      <div className="controls">
-        <button className="button" onClick={toggleCamera}>
-          <Camera
-            size={18}
-            style={{ verticalAlign: "middle", marginRight: 6 }}
-          />
-          Switch Camera ({facingMode === "environment" ? "Back" : "Front"})
-        </button>
-
-        <button className="button" onClick={resetScanner}>
-          <RotateCcw
-            size={18}
-            style={{ verticalAlign: "middle", marginRight: 6 }}
-          />
-          Reset Scanner
-        </button>
-      </div>
-
-      {recentScans.length > 0 && (
-        <div className="recent">
-          <h3>Recent Check-ins</h3>
-          {recentScans.map((scan, index) => (
-            <div key={scan.id + index} className="recent-item">
-              <div>
-                <div className="recent-name">{scan.name}</div>
-                <div className="recent-email">{scan.email}</div>
-              </div>
-              <div className="recent-time">
-                {new Date(scan.time).toLocaleTimeString()}
-              </div>
+          {error && (
+            <div className="message error">
+              <XCircle /> {error}
             </div>
-          ))}
+          )}
+          {success && (
+            <div className="message success">
+              <CheckCircle /> {success}
+              <p>{new Date().toLocaleString()}</p>
+            </div>
+          )}
+          {scanResult && !error && !success && (
+            <div className="message processing">
+              <LoaderCircle className="spin" />
+              Processing: {scanResult}
+            </div>
+          )}
         </div>
-      )}
 
-      <div className="instructions">
-        <h4>Instructions:</h4>
-        <ul>
-          <li>Position the QR code within the camera frame</li>
-          <li>Wait for the scan to complete</li>
-          <li>Each person can only check in once</li>
-          <li>Contact support if you have any issues</li>
-        </ul>
+        <div className="controls">
+          <button onClick={toggleCamera}>
+            <Camera className="icon-small" />
+            Switch Camera
+          </button>
+          <button onClick={resetScanner}>
+            <RotateCcw className="icon-small" />
+            Reset
+          </button>
+        </div>
+
+        {recentScans.length > 0 && (
+          <div className="recent-checkins">
+            <h3>Recent Check-ins</h3>
+            <ul>
+              {recentScans.slice(0, 5).map((scan, idx) => (
+                <li key={scan.id + idx}>
+                  <span>User: {scan.userId}</span>
+                  <span>{scan.doorName}</span>
+                  <span>{new Date(scan.time).toLocaleTimeString()}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
+      {/* CSS in JS */}
       <style>{`
-        .container {
+        .scanner-container {
           font-family: 'Segoe UI', sans-serif;
-          background: #f4f6f8;
-          padding: 20px;
-        }
-        .header {
-          text-align: center;
-          background: white;
           padding: 30px;
-          border-radius: 15px;
-          margin-bottom: 30px;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+          background: #f9fbfc;
+          min-height: 100vh;
         }
-        .title {
+
+        .scanner-header {
+          text-align: center;
+          margin-bottom: 30px;
+        }
+
+        .scanner-header h1 {
           font-size: 32px;
-          margin-bottom: 10px;
           color: #2c3e50;
         }
-        .subtitle {
-          font-size: 18px;
+
+        .scanner-header p {
           color: #7f8c8d;
         }
-        .stats {
-          display: flex;
-          justify-content: center;
-          gap: 20px;
-          margin-bottom: 30px;
-          flex-wrap: wrap;
-        }
-        .stat {
-          background: white;
-          padding: 20px;
+
+        .scanner-panel {
+          background: #fff;
+          padding: 30px;
           border-radius: 12px;
-          text-align: center;
-          min-width: 120px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          max-width: 800px;
+          margin: auto;
         }
-        .stat-number {
+
+        .door-select-area {
+          margin-bottom: 20px;
+        }
+
+        .door-select-area label {
+          font-weight: bold;
+          display: flex;
+          align-items: center;
+          margin-bottom: 8px;
+          color: #34495e;
+        }
+
+        .door-select-area select {
+          width: 100%;
+          padding: 10px;
+          border-radius: 6px;
+          border: 1px solid #ccd6dd;
+        }
+
+        .stats-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 15px;
+          margin-bottom: 25px;
+          align-items: center;
+        }
+
+        .stat-card {
+          background: #f0f4f8;
+          border-radius: 10px;
+          padding: 15px 20px;
+          flex: 1;
+          min-width: 150px;
+          text-align: center;
+        }
+
+        .stat-card .number {
           font-size: 28px;
           font-weight: bold;
-          color: #27ae60;
-        }
-        .stat-label {
-          font-size: 12px;
-          color: #7f8c8d;
-        }
-        .scanner {
-          max-width: 500px;
-          margin: auto;
-          text-align: center;
-        }
-        .error {
-          color: #e74c3c;
-          background: #fdecea;
-          padding: 10px;
-          border-radius: 8px;
-          margin-top: 15px;
-        }
-        .success {
           color: #2ecc71;
-          background: #eafaf1;
-          padding: 10px;
-          border-radius: 8px;
-          margin-top: 15px;
         }
-        .processing {
-          color: #f39c12;
-          background: #fff3cd;
-          padding: 10px;
-          border-radius: 8px;
-          margin-top: 15px;
+
+        .stat-card .label {
+          color: #7f8c8d;
+          font-size: 13px;
         }
-        .user-info {
-          margin-top: 10px;
-          font-size: 14px;
-        }
-        .controls {
-          text-align: center;
-          margin: 20px 0;
-        }
-        .button {
-          background: #3498db;
-          color: white;
-          padding: 10px 20px;
-          margin: 5px;
+
+        .refresh-btn {
+          background: #2980b9;
+          color: #fff;
+          padding: 10px 16px;
           border: none;
           border-radius: 8px;
           cursor: pointer;
-          font-weight: 600;
-        }
-        .recent {
-          background: white;
-          padding: 20px;
-          border-radius: 12px;
-          margin-top: 30px;
-          max-width: 700px;
-          margin-left: auto;
-          margin-right: auto;
-        }
-        .recent-item {
           display: flex;
-          justify-content: space-between;
-          padding: 10px 0;
-          border-bottom: 1px solid #ecf0f1;
+          align-items: center;
+          gap: 6px;
+          margin-left: auto;
         }
-        .recent-name {
-          font-weight: 600;
-          color: #2c3e50;
+
+        .scanner-area {
+          text-align: center;
+          margin-bottom: 25px;
         }
-        .recent-email {
-          font-size: 13px;
-          color: #7f8c8d;
+
+        .message {
+          margin-top: 15px;
+          padding: 12px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          justify-content: center;
+          font-weight: 500;
         }
-        .recent-time {
-          font-size: 13px;
-          color: #2980b9;
+
+        .message.success {
+          background: #eafaf1;
+          color: #27ae60;
         }
-        .instructions {
-          background: white;
-          padding: 20px;
-          border-radius: 12px;
-          max-width: 600px;
-          margin: 30px auto;
+
+        .message.error {
+          background: #fdecea;
+          color: #c0392b;
         }
-        .instructions ul {
-          padding-left: 20px;
+
+        .message.processing {
+          background: #fff6e3;
+          color: #f39c12;
         }
-        .instructions li {
-          font-size: 14px;
-          margin-bottom: 6px;
-        }
+
         .spin {
           animation: spin 1s linear infinite;
         }
+
         @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-  }
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        .controls {
+          display: flex;
+          justify-content: center;
+          gap: 15px;
+          margin-bottom: 30px;
+        }
+
+        .controls button {
+          padding: 10px 20px;
+          background: #34495e;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .recent-checkins {
+          background: #f8f9fa;
+          padding: 20px;
+          border-radius: 10px;
+          margin-top: 30px;
+        }
+
+        .recent-checkins h3 {
+          margin-bottom: 10px;
+          color: #2c3e50;
+        }
+
+        .recent-checkins ul {
+          list-style: none;
+          padding: 0;
+        }
+
+        .recent-checkins li {
+          display: flex;
+          justify-content: space-between;
+          padding: 8px 0;
+          border-bottom: 1px solid #e0e4e8;
+          font-size: 14px;
+        }
+
+        .icon {
+          vertical-align: middle;
+          margin-right: 8px;
+        }
+
+        .icon-small {
+          vertical-align: middle;
+          margin-right: 6px;
+        }
+
+        @media (max-width: 600px) {
+          .stats-grid {
+            flex-direction: column;
+          }
+
+          .controls {
+            flex-direction: column;
+          }
+        }
       `}</style>
     </div>
   );
